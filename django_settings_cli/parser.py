@@ -3,10 +3,10 @@ from __future__ import print_function
 import ast
 import fileinput
 import operator
-from json import dump
-from logging import INFO
+from json import dump, dumps
+from logging import _nameToLevel
+from os import environ
 from platform import python_version_tuple
-from pprint import pprint
 from sys import modules, stdout
 
 import astor
@@ -21,7 +21,7 @@ if python_version_tuple()[0] == '3':
     xrange = range
 
 log = get_logger(modules[__name__].__name__)
-log.setLevel(INFO)
+log.setLevel(_nameToLevel[environ.get('DJANGO_SETTING_CLI_LOG_LEVEL', 'INFO')])
 
 
 class DebugVisitor(ast.NodeVisitor):
@@ -57,18 +57,21 @@ class DebugVisitor(ast.NodeVisitor):
 
 
 class AssignQuerierVisitor(ast.NodeVisitor):
-    filter_value = None  # type: str
+    filter_value = None # type: tuple
     candidates = []
+    outer_key = None
 
     def visit_Assign(self, node):  # type: (AssignQuerierVisitor, ast.Assign) -> any
         for target in node.targets:
             if isinstance(target, ast.Name):
-                if target.id == self.filter_value:
+                if target.id == self.filter_value[0]:
                     self.candidates.append(target.id)
-                    continue
                 # log.debug('target.ctx:', target.ctx, ';')
             elif isinstance(target, ast.Subscript):
                 log.debug('target.slice.value.s: {} ;'.format(target.slice.value.s))
+                if len(self.filter_value) > 1 and target.slice.value.s == self.filter_value[1]:
+                    self.candidates.append(target.slice.value.s)
+                    self.outer_key = target.slice.value.s
                 if isinstance(target.value, ast.Name):
                     log.debug('target.value.id: {} ;'.format(target.value.id))
             else:
@@ -77,7 +80,10 @@ class AssignQuerierVisitor(ast.NodeVisitor):
         if len(self.candidates) & 1 == 0:
             return
 
-        self.candidates.append(node_to_python(node))
+        self.candidates.append(
+            (lambda py: py if self.outer_key is None else {self.outer_key: py})(node_to_python(node))
+        )
+        self.outer_key = None
 
 
 def debug_py(infile):
@@ -86,29 +92,31 @@ def debug_py(infile):
     # log.debug(astor.dump_tree(parsed))
 
 
+def parse_file(infile, keys):
+    visitor = AssignQuerierVisitor()
+    visitor.filter_value = (keys[1], keys[2]) if len(keys) > 2 else (keys[1],)
+    fstr = ''.join(line.replace('\r\n', '\n').replace('\r', '\n') for line in fileinput.input(infile))
+    if infile == '-':
+        infile = 'stdin'
+    visitor.visit(ast.parse(fstr, filename=infile))
+    log.debug('visitor.candidates: {} ;'.format(visitor.candidates))
+    r = reduce(operator.getitem, keys[2:-1],
+               visitor.candidates[1])[keys[-1]] if len(keys) > 2 else visitor.candidates[1]
+    return r
+
+
 def query_py(infile, query, raw_strings, outfile):
     keys = query.split('.')
     if keys == ['', '']:
         return
 
-    visitor = AssignQuerierVisitor()
-    visitor.filter_value = keys[1]
-
-    fstr = ''.join(line.replace('\r\n', '\n').replace('\r', '\n') for line in fileinput.input(infile))
-    if infile == '-':
-        infile = 'stdin'
-
-    visitor.visit(ast.parse(fstr, filename=infile))
-
-    log.debug('visitor.candidates: {} ;'.format(visitor.candidates))
-
-    r = reduce(operator.getitem, keys[2:-1],
-               visitor.candidates[1])[keys[-1]] if len(keys) > 2 else visitor.candidates[1]
+    r = parse_file(infile, keys)
 
     stream = stdout if outfile is None else open(outfile, 'wt')
     if raw_strings:
-        pprint(r, stream)
+        s = dumps(r, indent=2)
+        stream.write(s[1:-1] if s.startswith('"') or s.startswith("'") else s)
     else:
         dump(r, stream, indent=2)
-        stream.write('\n')
+    stream.write('\n')
     stream.close()

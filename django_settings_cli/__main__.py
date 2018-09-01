@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-from argparse import ArgumentParser, FileType
+from argparse import ArgumentParser
 from os import path
-from sys import modules
+from sys import modules, argv
 
 from django_settings_cli import __version__
-from django_settings_cli.parser import debug_py, query_py
+from django_settings_cli.parser import query_py
 
 
 def _file_or_dash(parser, arg):
@@ -28,6 +28,8 @@ def _build_parser():
 
 
 if __name__ == '__main__':
+    if sum(1 for arg in argv if not arg.startswith('-')) == 2:
+        argv.append('-')
     args = _build_parser().parse_args()
     # debug_py
     query_py(**dict(args._get_kwargs()))
