@@ -3,6 +3,7 @@ from __future__ import print_function
 import ast
 import fileinput
 import operator
+from io import TextIOWrapper
 from json import dump, dumps
 from logging import _nameToLevel
 from os import environ
@@ -12,7 +13,7 @@ from sys import modules, stdout
 import astor
 
 from django_settings_cli import get_logger
-from django_settings_cli.parser_utils import astdict_to_dict, resolve_collection, node_to_python
+from django_settings_cli.parser_utils import astdict_to_dict, resolve_collection, node_to_python, parenthetic_contents
 
 if python_version_tuple()[0] == '3':
     from functools import reduce
@@ -57,7 +58,7 @@ class DebugVisitor(ast.NodeVisitor):
 
 
 class AssignQuerierVisitor(ast.NodeVisitor):
-    filter_value = None # type: tuple
+    filter_value = None  # type: tuple
     candidates = []
     outer_key = None
 
@@ -95,17 +96,20 @@ def debug_py(infile):
 def parse_file(infile, keys):
     visitor = AssignQuerierVisitor()
     visitor.filter_value = (keys[1], keys[2]) if len(keys) > 2 else (keys[1],)
-    fstr = ''.join(line.replace('\r\n', '\n').replace('\r', '\n') for line in fileinput.input(infile))
-    if infile == '-':
+
+    fstr = ''.join(line.replace('\r\n', '\n').replace('\r', '\n')
+                   for line in (infile if isinstance(infile, TextIOWrapper) else fileinput.input(infile)))
+    if infile == '-' or isinstance(infile, TextIOWrapper):
         infile = 'stdin'
     visitor.visit(ast.parse(fstr, filename=infile))
+
     log.debug('visitor.candidates: {} ;'.format(visitor.candidates))
     r = reduce(operator.getitem, keys[2:-1],
                visitor.candidates[1])[keys[-1]] if len(keys) > 2 else visitor.candidates[1]
     return r
 
 
-def query_py(infile, query, raw_strings, outfile):
+def query_py(infile, query, raw_strings, format_str, outfile):
     keys = query.split('.')
     if keys == ['', '']:
         return
@@ -113,6 +117,8 @@ def query_py(infile, query, raw_strings, outfile):
     r = parse_file(infile, keys)
 
     stream = stdout if outfile is None else open(outfile, 'wt')
+    if format_str:
+        r = format_str.format(**{k: r[k] for k in parenthetic_contents(format_str)})
     if raw_strings:
         s = dumps(r, indent=2)
         stream.write(s[1:-1] if s.startswith('"') or s.startswith("'") else s)

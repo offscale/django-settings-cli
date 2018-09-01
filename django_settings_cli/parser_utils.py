@@ -80,3 +80,15 @@ def node_to_python(node):
         return node.value.value
 
     log.debug('NotImplemented for: {value}, of type: {typ} ;'.format(value=node.value, typ=type(node.value)))
+
+
+# From: https://stackoverflow.com/a/4285211
+def parenthetic_contents(s):
+    """Generate parenthesized contents in string as pairs (level, contents)."""
+    stack = []
+    for i, c in enumerate(s):
+        if c == '{':
+            stack.append(i)
+        elif c == '}' and stack:
+            start = stack.pop()
+            yield s[start + 1: i]

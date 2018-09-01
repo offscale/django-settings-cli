@@ -12,34 +12,41 @@ Basic parsing, modifying & emitting for Django settings.py files
 
 ## Usage
 
-    usage: python -m django_settings_cli [-h] [-o OUTFILE] [-r] [--version]
-                                         query infile
+    usage: python -m django_settings_cli [-h] [-o OUTFILE] [-r] [-f FORMAT_STR]
+                                         [--version]
+                                         query [infile]
     
     Basic parsing, modifying & emitting for Django settings.py files.
     
     positional arguments:
       query                 Query string
-      infile                Input file location, or `-` for stdin
+      infile                Input file
     
     optional arguments:
       -h, --help            show this help message and exit
       -o OUTFILE, --outfile OUTFILE
                             Outfile
       -r, --raw-strings     output raw strings, not JSON texts
+      -f FORMAT_STR, --format FORMAT_STR
+                            Format (currently only supports top-level key of dict)
       --version             show program's version number and exit
+
 
 ## Example
 
 Using the `local.py.example` file in this package:
 
-    $ cat local.py.example | python -m django_settings_cli .DATABASES -
+    $ python -m django_settings_cli .DATABASES.default local.py.example
     {
-      "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "taiga",
-        "USER": "taiga",
-        "PASSWORD": "changeme",
-        "HOST": "",
-        "PORT": ""
-      }
+      "ENGINE": "django.db.backends.postgresql",
+      "NAME": "taiga",
+      "USER": "taiga",
+      "PASSWORD": "changeme",
+      "HOST": "localhost",
+      "PORT": "5432"
     }
+
+Another example, this time from stdin, with a format string and raw (quoteless) output:
+
+    $ cat local.py.example | python -m django_settings_cli .DATABASES.default -f 'postgres://{USER}@{HOST}:{PORT}/{NAME}' -r
+    postgres://taiga@localhost:5432/taiga
