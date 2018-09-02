@@ -25,6 +25,7 @@ def _build_parser():
     parser.add_argument('-r', '--raw-strings', help='output raw strings, not JSON texts', action='store_true')
     parser.add_argument('-f', '--format', help='Format (currently only supports top-level key of dict)',
                         dest='format_str')
+    parser.add_argument('--no-eval', help='Disable eval (for format str)', action='store_true')
     parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))
     return parser
 

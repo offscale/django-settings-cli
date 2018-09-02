@@ -1,6 +1,8 @@
 # from typing import Hashable
 import ast
+from itertools import takewhile
 from platform import python_version_tuple
+from string import ascii_letters, digits
 from sys import modules
 
 from django_settings_cli import get_logger
@@ -92,3 +94,16 @@ def parenthetic_contents(s):
         elif c == '}' and stack:
             start = stack.pop()
             yield s[start + 1: i]
+
+
+def eval_parens(k, r, ref, no_eval):
+    num = sum(1 for _ in takewhile(lambda ch: ch in ascii_letters + digits, k))
+
+    val = r[k[:num]]
+    if k[num:]:
+        if not no_eval:
+            evil = '"{}"{}'.format(r[k[:num]], k[num:].replace(k[:num], '"{}"'.format(r[k[:num]])))
+            val = eval(evil, r)
+        ref['format_str'] = ref['format_str'].replace(k, k[:num])
+
+    return k[:num], val

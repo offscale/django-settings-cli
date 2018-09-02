@@ -13,7 +13,8 @@ from sys import modules, stdout
 import astor
 
 from django_settings_cli import get_logger
-from django_settings_cli.parser_utils import astdict_to_dict, resolve_collection, node_to_python, parenthetic_contents
+from django_settings_cli.parser_utils import astdict_to_dict, resolve_collection, node_to_python, parenthetic_contents, \
+    eval_parens
 
 if python_version_tuple()[0] == '3':
     from functools import reduce
@@ -109,7 +110,7 @@ def parse_file(infile, keys):
     return r
 
 
-def query_py(infile, query, raw_strings, format_str, outfile):
+def query_py(infile, query, raw_strings, format_str, no_eval, outfile):
     keys = query.split('.')
     if keys == ['', '']:
         return
@@ -117,8 +118,12 @@ def query_py(infile, query, raw_strings, format_str, outfile):
     r = parse_file(infile, keys)
 
     stream = stdout if outfile is None else open(outfile, 'wt')
+
     if format_str:
-        r = format_str.format(**{k: r[k] for k in parenthetic_contents(format_str)})
+        ref = {'format_str': format_str}
+        d = dict(tuple(eval_parens(k, r, ref, no_eval) for k in parenthetic_contents(format_str)))
+        format_str = ref['format_str']
+        r = format_str.format(**d)
     if raw_strings:
         s = dumps(r, indent=2)
         stream.write(s[1:-1] if s.startswith('"') or s.startswith("'") else s)
