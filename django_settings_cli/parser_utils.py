@@ -1,6 +1,8 @@
 # from typing import Hashable
 import ast
 from itertools import takewhile
+from logging import _nameToLevel
+from os import environ
 from platform import python_version_tuple
 from string import ascii_letters, digits
 from sys import modules
@@ -12,6 +14,8 @@ if python_version_tuple()[0] == '3':
     xrange = range
 
 log = get_logger(modules[__name__].__name__)
+log.setLevel(_nameToLevel[environ.get('DJANGO_SETTING_CLI_LOG_LEVEL', 'INFO')])
+
 raw_types = frozenset(('str', 'unicode', 'int', 'long', 'NoneType'))
 
 

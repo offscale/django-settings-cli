@@ -5,7 +5,7 @@ from os import path
 from sys import modules, stdin, argv
 
 from django_settings_cli import __version__
-from django_settings_cli.parser import query_py
+from django_settings_cli.parser import query_py_with_output
 
 
 def _file_or_dash(parser, arg):
@@ -37,4 +37,4 @@ if __name__ == '__main__':
 
     args = _build_parser().parse_args()
     # debug_py
-    query_py(**dict(args._get_kwargs()))
+    query_py_with_output(**dict(args._get_kwargs()))

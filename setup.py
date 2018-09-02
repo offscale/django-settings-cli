@@ -1,16 +1,16 @@
+from ast import parse
+from distutils.sysconfig import get_python_lib
 from functools import partial
 from os import path, listdir
 from platform import python_version_tuple
 
 from setuptools import setup, find_packages
 
-if python_version_tuple()[0] == 3:
+if python_version_tuple()[0] == '3':
     imap = map
     ifilter = filter
 else:
     from itertools import imap, ifilter
-from ast import parse
-from distutils.sysconfig import get_python_lib
 
 if __name__ == '__main__':
     package_name = 'django_settings_cli'

@@ -21,6 +21,7 @@ if python_version_tuple()[0] == '3':
 
     imap = map
     xrange = range
+    basestring = str
 
 log = get_logger(modules[__name__].__name__)
 log.setLevel(_nameToLevel[environ.get('DJANGO_SETTING_CLI_LOG_LEVEL', 'INFO')])
@@ -102,6 +103,10 @@ def parse_file(infile, keys):
                    for line in (infile if isinstance(infile, TextIOWrapper) else fileinput.input(infile)))
     if infile == '-' or isinstance(infile, TextIOWrapper):
         infile = 'stdin'
+
+    if keys == ['', '']:
+        return fstr
+
     visitor.visit(ast.parse(fstr, filename=infile))
 
     log.debug('visitor.candidates: {} ;'.format(visitor.candidates))
@@ -110,24 +115,32 @@ def parse_file(infile, keys):
     return r
 
 
-def query_py(infile, query, raw_strings, format_str, no_eval, outfile):
+def query_py_parser(infile, query='.', format_str=None, no_eval=False):
     keys = query.split('.')
-    if keys == ['', '']:
-        return
+    r = parse_file(infile=infile, keys=keys)
+    if format_str:
+        ref = {'format_str': format_str}
+        d = dict(tuple(eval_parens(k=k, r=r, ref=ref, no_eval=no_eval) for k in parenthetic_contents(format_str)))
+        format_str = ref['format_str']
+        r = format_str.format(**d)
+    return r
 
-    r = parse_file(infile, keys)
+
+def query_py_with_output(infile, query='.', raw_strings=False, format_str=None, no_eval=False, outfile=None):
+    r = query_py_parser(format_str=format_str, infile=infile, no_eval=no_eval, query=query)
 
     stream = stdout if outfile is None else open(outfile, 'wt')
 
-    if format_str:
-        ref = {'format_str': format_str}
-        d = dict(tuple(eval_parens(k, r, ref, no_eval) for k in parenthetic_contents(format_str)))
-        format_str = ref['format_str']
-        r = format_str.format(**d)
+    is_str = isinstance(r, basestring)
+
     if raw_strings:
-        s = dumps(r, indent=2)
+        s = r if is_str else dumps(r, indent=2)
         stream.write(s[1:-1] if s.startswith('"') or s.startswith("'") else s)
+    elif is_str:
+        stream.write(r)
     else:
         dump(r, stream, indent=2)
-    stream.write('\n')
-    stream.close()
+    if not is_str:
+        stream.write('\n')
+    if stream != stdout:
+        stream.close()
