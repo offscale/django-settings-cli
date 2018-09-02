@@ -1,17 +1,10 @@
 #!/usr/bin/env python
 
 from argparse import ArgumentParser
-from os import path
-from sys import modules, stdin, argv
+from sys import modules, argv
 
 from django_settings_cli import __version__
-from django_settings_cli.parser import query_py_with_output
-
-
-def _file_or_dash(parser, arg):
-    if arg != '-' and not path.exists(arg):
-        parser.error("The file %s does not exist!" % arg)
-    return arg
+from django_settings_cli import parser as django_settings_parser, emitter as django_settings_emitter
 
 
 def _build_parser():
@@ -19,13 +12,12 @@ def _build_parser():
         prog='python -m {}'.format(modules[__name__].__package__),
         description='Basic parsing, modifying & emitting for Django settings.py files.'
     )
-    parser.add_argument('query', help='Query string', default='.')
-    parser.add_argument('infile', help='Input file', type=lambda x: _file_or_dash(parser, x), nargs='?', default=stdin)
-    parser.add_argument('-o', '--outfile', help='Outfile')
-    parser.add_argument('-r', '--raw-strings', help='output raw strings, not JSON texts', action='store_true')
-    parser.add_argument('-f', '--format', help='Format (currently only supports top-level key of dict)',
-                        dest='format_str')
-    parser.add_argument('--no-eval', help='Disable eval (for format str)', action='store_true')
+    subparsers = parser.add_subparsers(help='parse and emit', dest='command')
+
+    django_settings_parser._parser_cli_args(subparsers.add_parser('parse', help=django_settings_parser.__desc__))
+
+    django_settings_emitter._parser_cli_args(subparsers.add_parser('emit', help=django_settings_emitter.__desc__))
+
     parser.add_argument('--version', action='version', version='%(prog)s {}'.format(__version__))
     return parser
 
@@ -35,6 +27,7 @@ if __name__ == '__main__':
     if idx is not None:
         del argv[idx]
 
-    args = _build_parser().parse_args()
-    # debug_py
-    query_py_with_output(**dict(args._get_kwargs()))
+    kwargs = dict(_build_parser().parse_args()._get_kwargs())
+    # django_settings_parser.debug_py
+    command = kwargs.pop('command')
+    {'parse': django_settings_parser.query_py_with_output, 'emit': django_settings_emitter}[command](**kwargs)
