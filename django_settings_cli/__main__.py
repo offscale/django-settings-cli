@@ -30,4 +30,4 @@ if __name__ == '__main__':
     kwargs = dict(_build_parser().parse_args()._get_kwargs())
     # django_settings_parser.debug_py
     command = kwargs.pop('command')
-    {'parse': django_settings_parser.query_py_with_output, 'emit': django_settings_emitter}[command](**kwargs)
+    {'parse': django_settings_parser.query_py_with_output, 'emit': django_settings_emitter.emit}[command](**kwargs)

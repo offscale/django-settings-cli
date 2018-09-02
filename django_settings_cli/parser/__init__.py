@@ -12,7 +12,7 @@ from platform import python_version_tuple
 from string import ascii_letters
 from sys import modules, stdout, stdin
 
-from django_settings_cli.utils import _file_or_dash
+from django_settings_cli.utils import _file_or_dash, stream_tree_as_json
 
 if python_version_tuple()[0] == '3':
     from io import StringIO
@@ -155,27 +155,4 @@ def query_py_parser(infile, query='.', format_str=None, no_eval=False):
 def query_py_with_output(infile, query='.', raw_strings=False, format_str=None, no_eval=False, outfile=None):
     r = query_py_parser(format_str=format_str, infile=infile, no_eval=no_eval, query=query)
 
-    stream = stdout if outfile is None else open(outfile, 'wt')
-
-    is_str = isinstance(r, basestring)
-    new_line = is_str
-
-    if raw_strings:
-        s = r if is_str else dumps(r, indent=2)
-        stream.write(s[1:-1] if s.startswith('"') else s)
-        new_line = r.endswith('\n')
-    elif is_str:
-        stream.write(quote_str(r))
-        new_line = r.endswith('\n')
-    else:
-        s = r if is_str else dumps(r, indent=2)
-        stream.write(quote_str(s))
-    if not new_line:
-        stream.write('\n')
-
-    if stream != stdout:
-        stream.close()
-
-
-def quote_str(s):
-    return '"{}"'.format(s) if len(s) and s[0] in ascii_letters else s
+    stream_tree_as_json(outfile, r, raw_strings)
