@@ -10,6 +10,10 @@ Basic parsing, modifying & emitting for Django settings.py files
 
     pip install .
 
+Or if you aren't developing:
+
+    pip install https://api.github.com/repos/offscale/django-settings-cli/zipball#egg=django_settings_cli
+
 ## Usage
 
     usage: python -m django_settings_cli [-h] [-o OUTFILE] [-r] [-f FORMAT_STR]
@@ -57,4 +61,9 @@ Let's generalise so it works with any engine:
     $ python -m django_settings_cli .DATABASES.default local.py.example -f '{ENGINE[ENGINE.rfind(".")+1:]}://{USER}@{HOST}:{PORT}/{NAME}' -r
     postgresql://taiga@localhost:5432/taiga
 
-Security warning: this last example calls `eval`, so people can call `exit(1)` and other more nefarious things. Disable with `--no-eval` argument.
+You can also set default values with `or`, like:
+
+    $ python -m django_settings_cli .DATABASES.default local.py.example -f '{ENGINE[ENGINE.rfind(".")+1:]}://{USER}@{HOST or "localhost"}:{PORT or 5432}/{NAME}' -r
+    postgresql://taiga@localhost:5432/taiga
+
+Security warning: these last examples call `eval`, so people can call `exit(1)` and other more nefarious things. Disable with `--no-eval` argument.
