@@ -10,6 +10,11 @@ from os import environ
 from platform import python_version_tuple
 from sys import modules, stdout
 
+if python_version_tuple()[0] == '3':
+    from io import StringIO
+else:
+    from cStringIO import StringIO
+
 import astor
 
 from django_settings_cli import get_logger
@@ -99,9 +104,11 @@ def parse_file(infile, keys):
     visitor = AssignQuerierVisitor()
     visitor.filter_value = (keys[1], keys[2]) if len(keys) > 2 else (keys[1],)
 
+    irregular_fh = isinstance(infile, TextIOWrapper) or isinstance(infile, StringIO)
+
     fstr = ''.join(line.replace('\r\n', '\n').replace('\r', '\n')
-                   for line in (infile if isinstance(infile, TextIOWrapper) else fileinput.input(infile)))
-    if infile == '-' or isinstance(infile, TextIOWrapper):
+                   for line in (infile if irregular_fh else fileinput.input(infile)))
+    if infile == '-' or irregular_fh:
         infile = 'stdin'
 
     if keys == ['', '']:
