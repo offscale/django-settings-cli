@@ -1,5 +1,5 @@
 django_settings_cli
-===============
+===================
 Basic parsing, modifying & emitting for Django settings.py files
 
 ## Install dependencies
@@ -52,7 +52,7 @@ Or if you aren't developing:
 
 Using the `local.py.example` file in this package:
 
-    $ python django_settings_cli parse .DATABASES.default local.py.example
+    $ python -m django_settings_cli parse .DATABASES.default local.py.example
     {
       "ENGINE": "django.db.backends.postgresql",
       "NAME": "taiga",
@@ -64,17 +64,17 @@ Using the `local.py.example` file in this package:
 
 Another example, this time from stdin, with a format string and raw (quoteless) output:
 
-    $ cat local.py.example | python django_settings_cli parse .DATABASES.default -f 'postgres://{USER}@{HOST}:{PORT}/{NAME}' -r
+    $ cat local.py.example | python -m django_settings_cli parse .DATABASES.default -f 'postgres://{USER}@{HOST}:{PORT}/{NAME}' -r
     postgres://taiga@localhost:5432/taiga
 
 Let's generalise so it works with any engine:
 
-    $ python django_settings_cli parse .DATABASES.default local.py.example -f '{ENGINE[ENGINE.rfind(".")+1:]}://{USER}@{HOST}:{PORT}/{NAME}' -r
+    $ python -m django_settings_cli parse .DATABASES.default local.py.example -f '{ENGINE[ENGINE.rfind(".")+1:]}://{USER}@{HOST}:{PORT}/{NAME}' -r
     postgresql://taiga@localhost:5432/taiga
 
 You can also set default values with `or`, like:
 
-    $ python django_settings_cli parse .DATABASES.default local.py.example -f '{ENGINE[ENGINE.rfind(".")+1:]}://{USER}@{HOST or "localhost"}:{PORT or 5432}/{NAME}' -r
+    $ python -m django_settings_cli parse .DATABASES.default local.py.example -f '{ENGINE[ENGINE.rfind(".")+1:]}://{USER}@{HOST or "localhost"}:{PORT or 5432}/{NAME}' -r
     postgresql://taiga@localhost:5432/taiga
 
 Security warning: these last examples call `eval`, so people can call `exit(1)` and other more nefarious things. Disable with `--no-eval` argument.
