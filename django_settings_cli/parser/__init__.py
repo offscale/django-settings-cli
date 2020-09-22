@@ -1,53 +1,71 @@
-from __future__ import print_function
-
 import ast
 import fileinput
 import operator
 from argparse import ArgumentParser
 from io import TextIOWrapper
-from json import dumps
 from logging import _nameToLevel
 from os import environ
 from platform import python_version_tuple
-from string import ascii_letters
-from sys import modules, stdout, stdin
+from sys import modules, stdin, version
 
 from django_settings_cli.utils import _file_or_dash, stream_tree_as_json
 
-if python_version_tuple()[0] == '3':
-    from io import StringIO
-else:
+if version[0] == "2":
     from cStringIO import StringIO
+
+else:
+    from io import StringIO
 
 import astor
 
 from django_settings_cli import get_logger
-from django_settings_cli.parser.parser_utils import astdict_to_dict, resolve_collection, node_to_python, \
-    parenthetic_contents, \
-    eval_parens
+from django_settings_cli.parser.parser_utils import (
+    astdict_to_dict,
+    resolve_collection,
+    node_to_python,
+    parenthetic_contents,
+    eval_parens,
+)
 
-if python_version_tuple()[0] == '3':
+if python_version_tuple()[0] == "3":
     from functools import reduce
 
     imap = map
     xrange = range
-    basestring = str
+    str = str
 
 log = get_logger(modules[__name__].__name__)
-log.setLevel(_nameToLevel[environ.get('DJANGO_SETTING_CLI_LOG_LEVEL', 'INFO')])
+log.setLevel(_nameToLevel[environ.get("DJANGO_SETTING_CLI_LOG_LEVEL", "INFO")])
 
-__desc__ = 'Django settings.py emitter'
+__desc__ = "Django settings.py emitter"
 
 
 def _parser_cli_args(parser=None):
     parser = ArgumentParser(description=__desc__) if parser is None else parser
-    parser.add_argument('query', help='Query string', default='.')
-    parser.add_argument('infile', help='Input file', type=lambda x: _file_or_dash(parser, x), nargs='?', default=stdin)
-    parser.add_argument('-o', '--outfile', help='Outfile')
-    parser.add_argument('-r', '--raw-strings', help='output raw strings, not JSON texts', action='store_true')
-    parser.add_argument('-f', '--format', help='Format (currently only supports top-level key of dict)',
-                        dest='format_str')
-    parser.add_argument('--no-eval', help='Disable eval (for format str)', action='store_true')
+    parser.add_argument("query", help="Query string", default=".")
+    parser.add_argument(
+        "infile",
+        help="Input file",
+        type=lambda x: _file_or_dash(parser, x),
+        nargs="?",
+        default=stdin,
+    )
+    parser.add_argument("-o", "--outfile", help="Outfile")
+    parser.add_argument(
+        "-r",
+        "--raw-strings",
+        help="output raw strings, not JSON texts",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-f",
+        "--format",
+        help="Format (currently only supports top-level key of dict)",
+        dest="format_str",
+    )
+    parser.add_argument(
+        "--no-eval", help="Disable eval (for format str)", action="store_true"
+    )
     return parser
 
 
@@ -55,32 +73,44 @@ class DebugVisitor(ast.NodeVisitor):
     def visit_Assign(self, node):  # type: (DebugVisitor, ast.Assign) -> any
         for target in node.targets:
             if isinstance(target, ast.Name):
-                log.debug('target.id: {} ;'.format(target.id))
+                log.debug("target.id: {} ;".format(target.id))
                 # log.debug('target.ctx: {} ;'.format(target.ctx))
             elif isinstance(target, ast.Subscript):
-                log.debug('target.slice.value.s: {} ;'.format(target.slice.value.s))
+                log.debug("target.slice.value.s: {} ;".format(target.slice.value.s))
                 if isinstance(target.value, ast.Name):
-                    log.debug('target.value.id: {} ;'.format(target.value.id))
+                    log.debug("target.value.id: {} ;".format(target.value.id))
             else:
-                log.debug('type(target):', type(target), ';')
+                log.debug("type(target):", type(target), ";")
         if isinstance(node.value, ast.NameConstant):
-            log.debug('node.value.value: {} ;'.format(node.value.value))
+            log.debug("node.value.value: {} ;".format(node.value.value))
         if isinstance(node.value, ast.Dict):
-            log.debug('astdict_to_dict(node.value)', astdict_to_dict(node.value), ';')
+            log.debug("astdict_to_dict(node.value)", astdict_to_dict(node.value), ";")
         elif isinstance(node.value, ast.Str):
-            log.debug('node.value.s: {} ;'.format(node.value.s))
+            log.debug("node.value.s: {} ;".format(node.value.s))
         elif isinstance(node.value, ast.Num):
-            log.debug('node.value.n: {} ;'.format(node.value.n))
+            log.debug("node.value.n: {} ;".format(node.value.n))
         elif isinstance(node.value, ast.List):
-            log.debug('LIST node.value.elts: {} ;'.format(list(resolve_collection(node.value.elts))))
+            log.debug(
+                "LIST node.value.elts: {} ;".format(
+                    list(resolve_collection(node.value.elts))
+                )
+            )
         elif isinstance(node.value, ast.Tuple):
-            log.debug('TUPLE node.value.elts: {} ;'.format(tuple(resolve_collection(node.value.elts))))
+            log.debug(
+                "TUPLE node.value.elts: {} ;".format(
+                    tuple(resolve_collection(node.value.elts))
+                )
+            )
         elif isinstance(node.value, ast.NameConstant):
-            log.debug('node.value.value: {} ;'.format(node.value.value))
+            log.debug("node.value.value: {} ;".format(node.value.value))
         else:
-            log.debug('NotImplemented for: {value}, of type: {typ} ;'.format(value=node.value, typ=type(node.value)))
+            log.debug(
+                "NotImplemented for: {value}, of type: {typ} ;".format(
+                    value=node.value, typ=type(node.value)
+                )
+            )
 
-        log.debug('\n')
+        log.debug("\n")
 
 
 class AssignQuerierVisitor(ast.NodeVisitor):
@@ -95,20 +125,25 @@ class AssignQuerierVisitor(ast.NodeVisitor):
                     self.candidates.append(target.id)
                 # log.debug('target.ctx:', target.ctx, ';')
             elif isinstance(target, ast.Subscript):
-                log.debug('target.slice.value.s: {} ;'.format(target.slice.value.s))
-                if len(self.filter_value) > 1 and target.slice.value.s == self.filter_value[1]:
+                log.debug("target.slice.value.s: {} ;".format(target.slice.value.s))
+                if (
+                    len(self.filter_value) > 1
+                    and target.slice.value.s == self.filter_value[1]
+                ):
                     self.candidates.append(target.slice.value.s)
                     self.outer_key = target.slice.value.s
                 if isinstance(target.value, ast.Name):
-                    log.debug('target.value.id: {} ;'.format(target.value.id))
+                    log.debug("target.value.id: {} ;".format(target.value.id))
             else:
-                log.debug('type(target): {} ;'.format(type(target)))
+                log.debug("type(target): {} ;".format(type(target)))
 
         if len(self.candidates) & 1 == 0:
             return
 
         self.candidates.append(
-            (lambda py: py if self.outer_key is None else {self.outer_key: py})(node_to_python(node))
+            (lambda py: py if self.outer_key is None else {self.outer_key: py})(
+                node_to_python(node)
+            )
         )
         self.outer_key = None
 
@@ -125,34 +160,48 @@ def parse_file(infile, keys):
 
     irregular_fh = isinstance(infile, TextIOWrapper) or isinstance(infile, StringIO)
 
-    fstr = ''.join(line.replace('\r\n', '\n').replace('\r', '\n')
-                   for line in (infile if irregular_fh else fileinput.input(infile)))
-    if infile == '-' or irregular_fh:
-        infile = 'stdin'
+    fstr = "".join(
+        line.replace("\r\n", "\n").replace("\r", "\n")
+        for line in (infile if irregular_fh else fileinput.input(infile))
+    )
+    if infile == "-" or irregular_fh:
+        infile = "stdin"
 
-    if keys == ['', '']:
+    if keys == ["", ""]:
         return fstr
 
     visitor.visit(ast.parse(fstr, filename=infile))
 
-    log.debug('visitor.candidates: {} ;'.format(visitor.candidates))
-    r = reduce(operator.getitem, keys[2:-1],
-               visitor.candidates[1])[keys[-1]] if len(keys) > 2 else visitor.candidates[1]
+    log.debug("visitor.candidates: {} ;".format(visitor.candidates))
+    r = (
+        reduce(operator.getitem, keys[2:-1], visitor.candidates[1])[keys[-1]]
+        if len(keys) > 2
+        else visitor.candidates[1]
+    )
     return r
 
 
-def query_py_parser(infile, query='.', format_str=None, no_eval=False):
-    keys = query.split('.')
+def query_py_parser(infile, query=".", format_str=None, no_eval=False):
+    keys = query.split(".")
     r = parse_file(infile=infile, keys=keys)
     if format_str:
-        ref = {'format_str': format_str}
-        d = dict(tuple(eval_parens(k=k, r=r, ref=ref, no_eval=no_eval) for k in parenthetic_contents(format_str)))
-        format_str = ref['format_str']
+        ref = {"format_str": format_str}
+        d = dict(
+            tuple(
+                eval_parens(k=k, r=r, ref=ref, no_eval=no_eval)
+                for k in parenthetic_contents(format_str)
+            )
+        )
+        format_str = ref["format_str"]
         r = format_str.format(**d)
     return r
 
 
-def query_py_with_output(infile, query='.', raw_strings=False, format_str=None, no_eval=False, outfile=None):
-    r = query_py_parser(format_str=format_str, infile=infile, no_eval=no_eval, query=query)
+def query_py_with_output(
+    infile, query=".", raw_strings=False, format_str=None, no_eval=False, outfile=None
+):
+    r = query_py_parser(
+        format_str=format_str, infile=infile, no_eval=no_eval, query=query
+    )
 
     stream_tree_as_json(outfile, r, raw_strings)

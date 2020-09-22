@@ -7,18 +7,17 @@ from platform import python_version_tuple
 from setuptools import setup, find_packages
 
 if python_version_tuple()[0] == '3':
-    imap = map
-    ifilter = filter
+    map = map
+    filter = filter
 else:
-    from itertools import imap, ifilter
 
 if __name__ == '__main__':
     package_name = 'django_settings_cli'
 
     with open(path.join(package_name, '__init__.py')) as f:
-        __author__, __version__ = imap(
-            lambda buf: next(imap(lambda e: e.value.s, parse(buf).body)),
-            ifilter(lambda line: line.startswith('__version__') or line.startswith('__author__'), f)
+        __author__, __version__ = map(
+            lambda buf: next(map(lambda e: e.value.s, parse(buf).body)),
+            filter(lambda line: line.startswith('__version__') or line.startswith('__author__'), f)
         )
 
     to_funcs = lambda *paths: (partial(path.join, path.dirname(__file__), package_name, *paths),
@@ -39,7 +38,6 @@ if __name__ == '__main__':
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: Python',
             'Programming Language :: Python :: 2.7',
-            'Programming Language :: Python :: 2 :: Only'
         ],
         setup_requires=['PyYAML', 'astpath[xpath]', 'astor'],
         test_suite=package_name + '.tests',
