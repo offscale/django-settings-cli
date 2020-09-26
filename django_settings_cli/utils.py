@@ -1,12 +1,13 @@
 from json import dumps
 from os import path
-from platform import python_version_tuple
 from pprint import PrettyPrinter
 from string import ascii_letters
-from sys import stdout
+from sys import stdout, version
 
-if python_version_tuple()[0] == "3":
-    str = str
+if version[0] == "3":
+    string_types = (str,)
+else:
+    string_types = (basestring,)
 
 
 def _file_or_dash(parser, arg):
@@ -20,7 +21,7 @@ pp = PrettyPrinter(indent=4).pprint
 
 def stream_tree_as_json(outfile, r, raw_strings):
     stream = stdout if outfile is None else open(outfile, "wt")
-    is_str = isinstance(r, str)
+    is_str = isinstance(r, string_types)
     new_line = is_str
     if raw_strings:
         s = r if is_str else dumps(r, indent=2)

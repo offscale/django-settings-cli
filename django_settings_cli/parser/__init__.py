@@ -2,19 +2,43 @@ import ast
 import fileinput
 import operator
 from argparse import ArgumentParser
-from io import TextIOWrapper
-from logging import _nameToLevel
+
+try:
+    from logging import _nameToLevel
+except ImportError:
+    from logging import CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET
+
+    _nameToLevel = {
+        CRITICAL: "CRITICAL",
+        ERROR: "ERROR",
+        WARNING: "WARNING",
+        INFO: "INFO",
+        DEBUG: "DEBUG",
+        NOTSET: "NOTSET",
+        "CRITICAL": CRITICAL,
+        "ERROR": ERROR,
+        "WARN": WARNING,
+        "WARNING": WARNING,
+        "INFO": INFO,
+        "DEBUG": DEBUG,
+        "NOTSET": NOTSET,
+    }
+
 from os import environ
-from platform import python_version_tuple
 from sys import modules, stdin, version
 
 from django_settings_cli.utils import _file_or_dash, stream_tree_as_json
 
 if version[0] == "2":
-    from cStringIO import StringIO
+    try:
+        from cStringIO import StringIO
+    except ImportError:
+        from StringIO import StringIO
 
+    TextIOWrapper = StringIO
 else:
-    from io import StringIO
+    from io import StringIO, TextIOWrapper
+    from functools import reduce
 
 import astor
 
@@ -26,13 +50,6 @@ from django_settings_cli.parser.parser_utils import (
     parenthetic_contents,
     eval_parens,
 )
-
-if python_version_tuple()[0] == "3":
-    from functools import reduce
-
-    imap = map
-    xrange = range
-    str = str
 
 log = get_logger(modules[__name__].__name__)
 log.setLevel(_nameToLevel[environ.get("DJANGO_SETTING_CLI_LOG_LEVEL", "INFO")])
@@ -158,7 +175,9 @@ def parse_file(infile, keys):
     visitor = AssignQuerierVisitor()
     visitor.filter_value = (keys[1], keys[2]) if len(keys) > 2 else (keys[1],)
 
-    irregular_fh = isinstance(infile, TextIOWrapper) or isinstance(infile, StringIO)
+    irregular_fh = type(infile).__name__ in ("StringO", "StringIO") or isinstance(
+        infile, (TextIOWrapper, StringIO)
+    )
 
     fstr = "".join(
         line.replace("\r\n", "\n").replace("\r", "\n")

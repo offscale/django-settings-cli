@@ -1,7 +1,7 @@
 import ast
 import fileinput
 
-from logging import _nameToLevel
+from logging import _levelNames
 from os import environ
 
 from sys import modules, version
@@ -10,8 +10,10 @@ from django_settings_cli import get_logger
 from django_settings_cli.parser import AssignQuerierVisitor
 
 if version[0] == "2":
-    from cStringIO import StringIO
-
+    try:
+        from cStringIO import StringIO
+    except ImportError:
+        from StringIO import StringIO
 else:
     from io import StringIO, TextIOWrapper
 

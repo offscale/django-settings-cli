@@ -1,17 +1,18 @@
 # from typing import Hashable
 import ast
+from functools import partial
 from itertools import takewhile
-from logging import _nameToLevel
 from os import environ
-from platform import python_version_tuple
 from string import ascii_letters, digits
-from sys import modules
+from sys import modules, version
 
 from django_settings_cli import get_logger
+from django_settings_cli.parser import _nameToLevel
 
-if python_version_tuple()[0] == "3":
-    imap = map
-    xrange = range
+if version[0] == "2":
+    from itertools import imap as map
+
+    range = xrange
 
 log = get_logger(modules[__name__].__name__)
 log.setLevel(_nameToLevel[environ.get("DJANGO_SETTING_CLI_LOG_LEVEL", "INFO")])
@@ -22,14 +23,15 @@ raw_types = frozenset(("str", "unicode", "int", "long", "type(None)"))
 def get_value(node):
     if type(node) in raw_types:
         return node
-    if any((isinstance(node, ast.Subscript), isinstance(node, ast.NameConstant))):
-        return node.value
     elif isinstance(node, ast.Str):
         return node.s
     elif isinstance(node, ast.Num):
         return node.n
-    elif hasattr(node, "value") and hasattr(node.value, "value"):
-        return node.value.value
+    elif hasattr(node, "value"):
+        if hasattr(node.value, "value"):
+            return node.value.value
+        else:
+            return node.value
     elif isinstance(node, ast.Dict):
         return astdict_to_dict(node)
     log.debug(
@@ -44,9 +46,7 @@ def astdict_to_dict(node):
     if not isinstance(node, ast.Dict) or isinstance(node, dict):
         return node
 
-    return dict(
-        list(zip(list(map(get_value, node.keys)), list(map(get_value, node.values))))
-    )
+    return dict(zip(map(get_value, node.keys), map(get_value, node.values)))
 
 
 def collection_to_value(node):
@@ -68,13 +68,11 @@ def resolve_collection(node):
         typ = ast_type_to_native(e)
         return typ(collection_to_value(e.elts)) if typ in (list, tuple) else e.elts
 
-    return list(map(it, node))
+    return map(it, node)
 
 
 def node_to_python(node):
-    if isinstance(node.value, ast.NameConstant):
-        return node.value.value
-    elif isinstance(node.value, ast.Dict):
+    if isinstance(node.value, ast.Dict):
         return astdict_to_dict(node.value)
     elif isinstance(node.value, ast.Str):
         return node.value.s
@@ -84,9 +82,8 @@ def node_to_python(node):
         return list(resolve_collection(node.value.elts))
     elif isinstance(node.value, ast.Tuple):
         return tuple(resolve_collection(node.value.elts))
-    elif isinstance(node.value, ast.NameConstant):
+    elif version[0] == "3" and isinstance(node.value, (ast.Constant, ast.NameConstant)):
         return node.value.value
-
     log.debug(
         "NotImplemented for: {value}, of type: {typ} ;".format(
             value=node.value, typ=type(node.value)

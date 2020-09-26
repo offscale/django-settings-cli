@@ -5,8 +5,10 @@ from unittest import TestCase, main as unittest_main
 from pkg_resources import resource_filename
 
 if version[0] == "2":
-    from cStringIO import StringIO
-
+    try:
+        from cStringIO import StringIO
+    except ImportError:
+        from StringIO import StringIO
 else:
     from io import StringIO
 
@@ -15,11 +17,8 @@ from django_settings_cli.parser import query_py_parser
 
 class TestParser(TestCase):
     local_py_example = resource_filename(
-        path.basename(
-            modules[__name__].__spec__.origin.replace(
-                "/tests/{}.py".format(__name__), ""
-            )
-        ),
+        "django_settings_cli",
+        # path.join(path.dirname(path.dirname(__file__)),
         path.join("_data", "local.py.example"),
     )
     local_py_example_sio = StringIO()
