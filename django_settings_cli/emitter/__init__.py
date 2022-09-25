@@ -5,7 +5,6 @@ from sys import stdin, stdout
 
 import astor
 
-from django_settings_cli.emitter.emitter_utils import parse_file
 from django_settings_cli.utils import _file_or_dash
 
 __desc__ = "Django settings.py emitter"

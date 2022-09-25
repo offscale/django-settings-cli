@@ -1,6 +1,5 @@
 # from typing import Hashable
 import ast
-from functools import partial
 from itertools import takewhile
 from os import environ
 from string import ascii_letters, digits

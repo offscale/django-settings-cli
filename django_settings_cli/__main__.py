@@ -1,16 +1,20 @@
 #!/usr/bin/env python
 
 from argparse import ArgumentParser
-from sys import modules, argv
+from sys import argv, modules
 
 from django_settings_cli import __version__
-from django_settings_cli import (
-    parser as django_settings_parser,
-    emitter as django_settings_emitter,
-)
+from django_settings_cli import emitter as django_settings_emitter
+from django_settings_cli import parser as django_settings_parser
 
 
 def _build_parser():
+    """
+    CLI parser builder using builtin `argparse` module
+
+    :returns: instanceof ArgumentParser
+    :rtype: ```ArgumentParser```
+    """
     parser = ArgumentParser(
         prog="python -m {}".format(modules[__name__].__package__),
         description="Basic parsing, modifying & emitting for Django settings.py files.",

@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 try:
     from logging import _nameToLevel
 except ImportError:
-    from logging import CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET
+    from logging import CRITICAL, DEBUG, ERROR, INFO, NOTSET, WARNING
 
     _nameToLevel = {
         CRITICAL: "CRITICAL",
@@ -45,10 +45,10 @@ import astor
 from django_settings_cli import get_logger
 from django_settings_cli.parser.parser_utils import (
     astdict_to_dict,
-    resolve_collection,
+    eval_parens,
     node_to_python,
     parenthetic_contents,
-    eval_parens,
+    resolve_collection,
 )
 
 log = get_logger(modules[__name__].__name__)

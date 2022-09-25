@@ -1,6 +1,7 @@
-from os import path, environ
-from sys import modules, version
-from unittest import TestCase, main as unittest_main
+from os import environ, path
+from sys import version
+from unittest import TestCase
+from unittest import main as unittest_main
 
 from pkg_resources import resource_filename
 

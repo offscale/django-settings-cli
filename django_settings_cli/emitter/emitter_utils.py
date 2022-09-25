@@ -1,9 +1,6 @@
 import ast
 import fileinput
-
-from logging import _levelNames
 from os import environ
-
 from sys import modules, version
 
 from django_settings_cli import get_logger
